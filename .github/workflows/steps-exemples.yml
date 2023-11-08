@@ -1,0 +1,9 @@
+name: steps
+on:
+  push
+jobs:
+  jobx:
+    runs-on: ubuntu-latest
+    steps:
+      - name: verification of node version
+        run: node --version
