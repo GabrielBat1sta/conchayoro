@@ -5,11 +5,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: correction command
-        run: echo Hello, world! Build ok.
+      - name: create an artifact for reuse
+        run: echo “Full featured artifact” > build-result.txt
   deploy:
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - name: step do deploy
-        run: echo Hello, world! Deploy.
+      - name: use of artifact created
+        run: ls build-result.txt
