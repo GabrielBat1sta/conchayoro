@@ -23,7 +23,7 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
       AWS_EC2_METADATA_DISABLED: true
-      BUCKET_S3: ${{ github.ref == 'refs/heads/main' && 'producao-pos' || 'homologacao-pos' }}
+      BUCKET_S3: ${{ github.ref == 'refs/heads/main' && 'producao-aws' || 'homologacao-aws' }}
     steps:
     - uses: actions/download-artifact@v3
       with:
