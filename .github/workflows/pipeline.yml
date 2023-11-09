@@ -14,7 +14,7 @@ env:
   PROJECT_NAME: ${{ vars.PROJECT_NAME }}
   MODULE_NAME: ${{ vars.MODULE_NAME }}
   TAG: latest
-  STACK_NAME: "64bit Amazon Linux 2 v3.5.7 running Docker"
+  STACK_NAME: "64bit Amazon Linux 2 v3.6.3 running Docker"
   
 jobs:
   build:
@@ -68,3 +68,5 @@ jobs:
             sudo pip install --upgrade pip awsebcli            
       - run: |           
            eb deploy --verbose
+
+    
