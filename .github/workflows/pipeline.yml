@@ -67,4 +67,4 @@ jobs:
             sudo pip install --upgrade setuptools
             sudo pip install --upgrade pip awsebcli            
       - run: |           
-           eb deploy 
+           eb deploy --verbose
