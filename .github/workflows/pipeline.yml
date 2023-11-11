@@ -1,7 +1,7 @@
 name: conchayoro-pipeline-ecr-ebs
 
 on:
-#   workflow_dispatch:
+  workflow_dispatch:
   push:
     branches: [ main ]
 
@@ -15,7 +15,7 @@ env:
   MODULE_NAME: ${{ vars.MODULE_NAME }}
   TAG: latest
   STACK_NAME: "64bit Amazon Linux 2 v3.5.7 running Docker"
-  
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,27 +23,27 @@ jobs:
       MODULE_FULLNAME: ${{ vars.PROJECT_NAME }}/${{ vars.MODULE_NAME }}
       REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-node@v3
-      with:
-        node-version: '16'
-        cache: 'npm'
-    - run: docker build -t $MODULE_FULLNAME $MODULE_NAME
-    - run: |
-        docker tag $MODULE_FULLNAME:$TAG \
-        $REGISTRY_URL/$MODULE_FULLNAME:$TAG
-    - run: | 
-        aws ecr get-login-password --region $AWS_REGION | \
-        docker login --username AWS --password-stdin $REGISTRY_URL
-    - run: docker push $REGISTRY_URL/$MODULE_FULLNAME:$TAG
-    - uses: actions/upload-artifact@v3
-      with:
-        name: ebconfig
-        path: |
-           frontend/.elasticbeanstalk/config.yml
-           frontend/Dockerrun.aws.json
-    
-  deploy:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+      - run: docker build -t $MODULE_FULLNAME $MODULE_NAME
+      - run: |
+          docker tag $MODULE_FULLNAME:$TAG \
+          $REGISTRY_URL/$MODULE_FULLNAME:$TAG
+      - run: | 
+          aws ecr get-login-password --region $AWS_REGION | \
+          docker login --username AWS --password-stdin $REGISTRY_URL
+      - run: docker push $REGISTRY_URL/$MODULE_FULLNAME:$TAG
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ebconfig
+          path: |
+            frontend/.elasticbeanstalk/config.yml
+            frontend/Dockerrun.aws.json
+
+  deploy-test:
     runs-on: ubuntu-latest
     needs: build
     steps:
@@ -59,46 +59,20 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: '3.10'
-      - name: 'Install pip and awsebcli' #workaround: awsebcli não funciona com versões do pyyaml > 5.3
+      - name: 'Install pip and awsebcli'
         run: |
-            sudo wget https://bootstrap.pypa.io/get-pip.py
-            sudo python3 ./get-pip.py
-            sudo pip install "pyyaml<5.4"
-            sudo pip install --upgrade setuptools
-            sudo pip install --upgrade pip awsebcli            
+          sudo wget https://bootstrap.pypa.io/get-pip.py
+          sudo python3 ./get-pip.py
+          sudo pip install "pyyaml<5.4"
+          sudo pip install --upgrade setuptools
+          sudo pip install --upgrade pip awsebcli            
       - run: |           
-           eb deploy --verbose
+          eb deploy --verbose
 
-  buildHomolog:
+  deploy-homolog:
     runs-on: ubuntu-latest
-    env:
-      MODULE_FULLNAME: ${{ vars.PROJECT_NAME_HOMOLOG }}/${{ vars.MODULE_NAME }}
-      REGISTRY_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
+    needs: build
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-node@v3
-      with:
-        node-version: '16'
-        cache: 'npm'
-    - run: docker build -t $MODULE_FULLNAME $MODULE_NAME
-    - run: |
-        docker tag $MODULE_FULLNAME:$TAG \
-        $REGISTRY_URL/$MODULE_FULLNAME:$TAG
-    - run: | 
-        aws ecr get-login-password --region $AWS_REGION | \
-        docker login --username AWS --password-stdin $REGISTRY_URL
-    - run: docker push $REGISTRY_URL/$MODULE_FULLNAME:$TAG
-    - uses: actions/upload-artifact@v3
-      with:
-        name: ebconfig
-        path: |
-            frontend/.elasticbeanstalk/config.yml
-            frontend/Dockerrun.aws.json       
-                
-  deployHomolog:
-      runs-on: ubuntu-latest
-      needs: buildHomolog
-      steps:
       - uses: actions/download-artifact@v3
         with:
           name: ebconfig
@@ -115,4 +89,27 @@ jobs:
           python -m pip install --upgrade pip
           pip install awsebcli      
       - run: |           
-            eb deploy --verbose
+          eb deploy --verbose
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.event == 'deployment'
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: ebconfig
+          path: .
+      - run: |
+          sed -i='' "s/<AWS_ACCOUNT_ID>/$AWS_ACCOUNT_ID/" Dockerrun.aws.json
+          sed -i='' "s/<PROJECT_NAME>/$PROJECT_NAME/" Dockerrun.aws.json
+          sed -i='' "s/<MODULE_NAME>/$MODULE_NAME/" Dockerrun.aws.json
+          sed -i='' "s/<TAG>/$TAG/" Dockerrun.aws.json
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+      - run: |
+          python -m pip install --upgrade pip
+          pip install awsebcli      
+      - run: |           
+          eb deploy --verbose
