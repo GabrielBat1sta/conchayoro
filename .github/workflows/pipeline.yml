@@ -2,8 +2,13 @@ name: conchayoro-pipeline-ecr-ebs
 
 on:
   workflow_dispatch:
+    inputs:
+      deploy-production:
+        description: 'Deploy to production with manual approval'
+        required: false
+        default: 'false'
   push:
-    branches: [ main ]
+    branches: [main]
 
 env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -32,7 +37,7 @@ jobs:
       - run: |
           docker tag $MODULE_FULLNAME:$TAG \
           $REGISTRY_URL/$MODULE_FULLNAME:$TAG
-      - run: | 
+      - run: |
           aws ecr get-login-password --region $AWS_REGION | \
           docker login --username AWS --password-stdin $REGISTRY_URL
       - run: docker push $REGISTRY_URL/$MODULE_FULLNAME:$TAG
@@ -42,32 +47,6 @@ jobs:
           path: |
             frontend/.elasticbeanstalk/config.yml
             frontend/Dockerrun.aws.json
-
-  deploy-test:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - uses: actions/download-artifact@v3
-        with:
-          name: ebconfig
-          path: .
-      - run: |
-          sed -i='' "s/<AWS_ACCOUNT_ID>/$AWS_ACCOUNT_ID/" Dockerrun.aws.json
-          sed -i='' "s/<PROJECT_NAME>/$PROJECT_NAME/" Dockerrun.aws.json
-          sed -i='' "s/<MODULE_NAME>/$MODULE_NAME/" Dockerrun.aws.json
-          sed -i='' "s/<TAG>/$TAG/" Dockerrun.aws.json
-      - uses: actions/setup-python@v2
-        with:
-          python-version: '3.10'
-      - name: 'Install pip and awsebcli'
-        run: |
-          sudo wget https://bootstrap.pypa.io/get-pip.py
-          sudo python3 ./get-pip.py
-          sudo pip install "pyyaml<5.4"
-          sudo pip install --upgrade setuptools
-          sudo pip install --upgrade pip awsebcli            
-      - run: |           
-          eb deploy --verbose
 
   deploy-homolog:
     runs-on: ubuntu-latest
@@ -94,7 +73,7 @@ jobs:
   deploy-production:
     runs-on: ubuntu-latest
     needs: build
-    if: github.event_name == 'workflow_run' && github.event.workflow_run.event == 'deployment'
+    if: github.event.inputs.deploy-production == 'true'
     steps:
       - uses: actions/download-artifact@v3
         with:
@@ -111,5 +90,36 @@ jobs:
       - run: |
           python -m pip install --upgrade pip
           pip install awsebcli      
-      - run: |           
-          eb deploy --verbose
+      - name: 'Deploy to production with manual approval'
+        run: echo "Deploy to production, awaiting manual approval"
+      - name: 'Request approval'
+        id: approval
+        uses: actions/github-script@v4
+        with:
+          script: |
+            const response = await github.pulls.createReviewRequest({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.workflow_run.head_branch,
+              reviewers: ['GabrielBat1sta']
+            });
+
+            core.setOutput('approval-url', response.data.html_url);
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  manual-approval:
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    steps:
+      - name: 'Check approval status'
+        run: echo "Approval status:${{ needs.deploy-production.outputs.approved }}"
+      - name: 'Manual approval step'
+        if: needs.deploy-production.outputs.approved == 'true'
+        run: |
+          echo "Production deployment approved. Deploying to production now."
+          # Adicione aqui os passos necessários para implantar no ambiente de produção
+      - name: 'Manual rejection step'
+        if: needs.deploy-production.outputs.approved != 'true'
+        run: |
+          echo "Production deployment not approved. Skipping deployment."
