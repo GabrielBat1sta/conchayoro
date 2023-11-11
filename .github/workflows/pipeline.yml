@@ -69,7 +69,7 @@ jobs:
       - run: |           
            eb deploy --verbose
 
-buildHomolog:
+  buildHomolog:
     runs-on: ubuntu-latest
     env:
       MODULE_FULLNAME: ${{ vars.PROJECT_NAME_HOMOLOG }}/${{ vars.MODULE_NAME }}
@@ -95,7 +95,7 @@ buildHomolog:
             frontend/.elasticbeanstalk/config.yml
             frontend/Dockerrun.aws.json       
                 
-    deployHomolog:
+  deployHomolog:
       runs-on: ubuntu-latest
       needs: buildHomolog
       steps:
