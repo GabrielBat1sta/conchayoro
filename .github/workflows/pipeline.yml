@@ -34,8 +34,8 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-        node-version: "16"
-        cache: "npm"
+          node-version: "16"
+          cache: "npm"
 
       - name: Build and push Docker image
         run: |
@@ -47,7 +47,6 @@ jobs:
           aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REGISTRY_URL
 
           docker push $REGISTRY_URL/$MODULE_FULLNAME:$TAG
-
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
@@ -106,20 +105,20 @@ jobs:
           pip install awsebcli
 
       - name: Deploy to Production
-        run: echo "Deploy to production, awaiting manual approval"
         id: approval
         uses: actions/github-script@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const response = await github.pulls.createReview({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.payload.workflow_run.head_branch,
-              event: 'APPROVE'
-            });
+              const response = await github.pulls.createReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.workflow_run.head_branch,
+                event: 'APPROVE'
+              });
 
-            core.setOutput('approved', 'true');
+              core.setOutput('approved', 'true');
+
 
   manual-approval:
     runs-on: ubuntu-latest
@@ -131,4 +130,3 @@ jobs:
         if: needs.deploy-production.outputs.approved == 'true'
         run: |
           echo "Production deployment approved. Deploying to production now."
-          
