@@ -34,19 +34,20 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "16"
-          cache: "npm"
+        node-version: "16"
+        cache: "npm"
 
       - name: Build and push Docker image
         run: |
           docker build -t $MODULE_FULLNAME $MODULE_NAME
           docker tag $MODULE_FULLNAME:$TAG $REGISTRY_URL/$MODULE_FULLNAME:$TAG
-          
+
           # Login to Amazon ECR using AWS CLI
           aws --version
           aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REGISTRY_URL
-          
+
           docker push $REGISTRY_URL/$MODULE_FULLNAME:$TAG
+
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
@@ -130,4 +131,4 @@ jobs:
         if: needs.deploy-production.outputs.approved == 'true'
         run: |
           echo "Production deployment approved. Deploying to production now."
-          # Adicione aqui os passos necessários para implantar no ambiente de produ
+          
