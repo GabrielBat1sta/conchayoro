@@ -111,20 +111,9 @@ jobs:
           pip install awsebcli
 
       - name: Deploy to Production
-        run: echo "Deploy to production, awaiting manual approval"
-        id: approval
-        uses: actions/github-script@v4
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const response = await github.pulls.createReview({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.payload.workflow_run.head_branch,
-              event: 'APPROVE'
-            });
-
-            core.setOutput('approved', 'true');
+        run: |
+          echo "Deploy to production, awaiting manual approval"
+          # Seu script de aprovação manual aqui
 
   manual-approval:
     runs-on: ubuntu-latest
